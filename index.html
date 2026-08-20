@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Coffee Compass</title>
+<meta name="description" content="Because life is too short for bad coffee. Good coffee within walking distance of the crew hotel, for aircrew.">
+
+<!-- Security: strict Content Security Policy. Inline script is inherent to the single file
+     constraint; all dynamic content is written via textContent, never innerHTML with data. -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  base-uri 'none';
+  form-action 'none';
+  frame-ancestors 'none';
+  script-src 'unsafe-inline' https://cdnjs.cloudflare.com;
+  style-src 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+  font-src https://fonts.gstatic.com;
+  img-src 'self' data: blob: https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org https://cdnjs.cloudflare.com;
+  connect-src https://*.basemaps.cartocdn.com https://*.tile.openstreetmap.org;
+  manifest-src blob:;
+">
+
+<meta name="theme-color" content="#2a1a06">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Coffee Compass">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"
+  integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w=="
+  crossorigin="anonymous" referrerpolicy="no-referrer">
+
+<style>
+  :root{
+    --espresso:#2f1600;
+    --espresso-2:#3d2207;
+    --brown-mid:#8B4D22;
+    --roast:#DD6F02;
+    --green:#3F7D1F;
+    --green-deep:#2f6117;
+    --lime:#72AF1C;
+    --offwhite:#F2EEF5;
+    --grey:#b8a892;
+    --card:#ECE4D6;          /* warm cream, less bright than white */
+    --card-2:#e2d7c4;
+    --card-line:#d6c8b2;
+    --ink:#2c2620;           /* card text */
+    --muted-ink:#8a7d6d;
+    --sel-bg:#e3d7c1;        /* muted selector, not bright white */
+    --grad-green:linear-gradient(135deg,#3F7D1F 0%, #72AF1C 100%);
+    --grad-brown-down:linear-gradient(#3d2207 0%, #8B4D22 100%);
+    --grad-brown-up:linear-gradient(#5c3413 0%, #2f1600 100%);
+    --grad-head:linear-gradient(120deg,#3d2207 0%, #2f1600 62%, #24420f 140%);
+    --shadow:0 12px 34px rgba(0,0,0,.5);
+    --safe-top:env(safe-area-inset-top,0px);
+    --safe-bottom:env(safe-area-inset-bottom,0px);
+    --air:var(--roast);      /* airline accent, set per airport */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:"Roboto",system-ui,-apple-system,Segoe UI,sans-serif;
+    color:var(--offwhite);background:var(--espresso);overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.slab{font-family:"Roboto Slab",Georgia,serif}
+
+  #app{display:grid;grid-template-rows:auto 1fr auto;height:100%}
+
+  /* ---- Header (Fleet style: round mark + uppercase title) ---- */
+  header{
+    background:var(--grad-head);
+    padding:calc(9px + var(--safe-top)) 14px 9px;
+    display:flex;align-items:center;gap:12px;
+    border-bottom:2px solid transparent;
+    border-image:var(--grad-green) 1;
+    box-shadow:0 2px 14px rgba(0,0,0,.4);z-index:600;
+  }
+  .brand{display:flex;align-items:center;gap:11px;min-width:0}
+  .brand-mark{
+    width:40px;height:40px;border-radius:50%;flex:0 0 auto;
+    background:var(--grad-brown-up);
+    box-shadow:0 0 0 2px rgba(114,175,28,.55), 0 3px 10px rgba(0,0,0,.5);
+    display:grid;place-items:center;overflow:hidden;
+  }
+  .brand-mark svg{width:30px;height:30px}
+  .brand-text{display:flex;flex-direction:column;line-height:1.12;min-width:0}
+  .brand-title{font-family:"Roboto Slab";font-size:16px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+  .brand-sub{font-size:13px;font-weight:500;color:var(--lime);opacity:.98;letter-spacing:.2px;line-height:1.2}
+  .selectwrap{margin-left:auto;position:relative;flex:0 0 auto}
+  select#airport{
+    appearance:none;-webkit-appearance:none;
+    font-family:"Roboto";font-size:13.5px;font-weight:500;
+    color:#efe7d6;background:rgba(0,0,0,.28);
+    border:1px solid rgba(114,175,28,.4);border-radius:999px;
+    padding:9px 32px 9px 14px;max-width:46vw;cursor:pointer;
+  }
+  .selectwrap::after{content:"";position:absolute;right:14px;top:44%;
+    width:7px;height:7px;border-right:2px solid var(--lime);border-bottom:2px solid var(--lime);
+    transform:translateY(-50%) rotate(45deg);pointer-events:none}
+
+  /* ---- Map ---- */
+  #map{width:100%;height:100%;background:#c9d3d8}
+  .leaflet-container{background:#dfe6e8;font-family:"Roboto",sans-serif}
+  .leaflet-control-attribution{background:rgba(255,255,255,.82)!important;color:#5a5148!important}
+  .leaflet-control-attribution a{color:var(--green-deep)!important}
+  .leaflet-bar a{background:#fff;color:var(--espresso);border-bottom-color:#d8cdbb}
+  .leaflet-bar a:hover{background:var(--card-2)}
+
+  /* airport pins (ring concentric with dot) */
+  .pin{position:relative;width:30px;height:30px;display:grid;place-items:center}
+  .pin .dot{
+    width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+    font:700 9.5px/1 "Roboto Slab",serif;color:#fff;
+    box-shadow:0 3px 10px rgba(0,0,0,.45);border:2px solid #fff;z-index:2
+  }
+  .pin.live .dot{background:var(--roast)}
+  .pin.soon .dot{background:#9a8f82}
+  .pin .ring{position:absolute;left:50%;top:50%;width:28px;height:28px;margin:-14px 0 0 -14px;
+    border-radius:50%;border:2.5px solid var(--lime);z-index:1;pointer-events:none}
+  .leaflet-marker-icon{cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0);touch-action:manipulation}
+  .pin,.spot{pointer-events:auto}
+  .pin.live .ring{animation:pulse 2.4s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(.75);opacity:.75}100%{transform:scale(2.1);opacity:0}}
+  /* orientation spots */
+  .spot{width:26px;height:26px;display:grid;place-items:center}
+  .spot .s{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.45)}
+  .spot.coffee .s{background:var(--roast)}
+  .spot.hotel .s{background:var(--green)}
+  .spot .s svg{width:13px;height:13px;fill:#fff}
+
+  /* ---- Scrim ---- */
+  .scrim{position:fixed;inset:0;background:rgba(20,11,3,.55);opacity:0;visibility:hidden;
+    transition:opacity .25s ease,visibility .25s ease;z-index:610;backdrop-filter:blur(2px)}
+  .scrim.on{opacity:1;visibility:visible}
+
+  /* ---- Airport sheet (Abstract Hub pattern) ---- */
+  #sheet{
+    position:fixed;left:0;right:0;bottom:0;z-index:620;
+    max-height:80svh;display:flex;flex-direction:column;
+    background:var(--grad-brown-down);border-radius:20px 20px 0 0;
+    box-shadow:var(--shadow);transform:translateY(101%);
+    transition:transform .3s cubic-bezier(.2,.7,.2,1);
+    padding-bottom:var(--safe-bottom);overflow:hidden;
+    border-top:3px solid var(--air);
+  }
+  #sheet.on{transform:none}
+  .sheet-grab{width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.35);margin:8px auto 0}
+  .sheet-head{padding:8px 14px 6px;display:flex;align-items:flex-start;gap:8px}
+  .sheet-title{flex:1;min-width:0}
+  .sheet-title h2{font-size:20px;margin:2px 0 0}
+  .sheet-title .sub{font-size:12px;color:var(--offwhite);opacity:.7}
+  .airchip{display:inline-flex;align-items:center;gap:6px;margin-top:7px;
+    padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;
+    background:var(--air);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+  .airchip svg{width:12px;height:12px;fill:#fff}
+  .icon-btn{width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.28);
+    color:var(--offwhite);display:grid;place-items:center;cursor:pointer;flex:0 0 auto}
+  .icon-btn:hover{background:rgba(0,0,0,.45)}
+  .icon-btn svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+  .hotelbar{display:flex;gap:0;padding:6px 14px 2px}
+  .hotelbar.hide{display:none}
+  .hotelbar button{
+    flex:1 1 0;font-family:"Roboto";font-size:13.5px;font-weight:700;
+    color:var(--offwhite);background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.14);
+    padding:10px 6px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
+  }
+  .hotelbar button:first-child{border-radius:10px 0 0 10px}
+  .hotelbar button:last-child{border-radius:0 10px 10px 0}
+  .hotelbar button+button{border-left:0}
+  .hotelbar button[aria-pressed="true"]{background:var(--grad-green);border-color:transparent;color:#fff}
+  .hotelheading{padding:9px 16px 2px;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--lime);opacity:.9}
+  .hotelheading strong{color:#fff;text-transform:none;font-size:13px;letter-spacing:0;opacity:1}
+  .cards{overflow-y:auto;padding:6px 12px calc(14px + var(--safe-bottom));display:grid;gap:12px}
+
+  .card{background:var(--card);color:var(--ink);border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+  .card .photo{height:104px;background:var(--grad-brown-up);position:relative;display:flex;align-items:flex-end;justify-content:space-between}
+  .card .photo .ph{position:absolute;inset:0;display:grid;place-items:center;opacity:.45}
+  .card .meta{margin:8px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;position:relative;z-index:2;max-width:calc(100% - 78px)}
+  .card .chip{padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.62);color:#fff;font-size:12px;font-weight:600;
+    display:inline-flex;align-items:center;gap:5px;text-decoration:none;white-space:nowrap}
+  .card .chip.long{background:linear-gradient(135deg,#8B4D22,#5c3413)}
+  .card .chip svg{width:13px;height:13px;fill:#fff}
+  .card .rate{margin:8px;position:relative;z-index:2;display:flex;gap:2px;background:rgba(0,0,0,.42);padding:5px 8px;border-radius:999px}
+  .card .body{padding:11px 14px 14px}
+  .card h3{margin:0;font-size:17px;color:var(--ink)}
+  .card .addr{font-size:12px;color:var(--muted-ink);margin:2px 0 8px}
+  .card .praise{font-size:14px;line-height:1.42;color:#3a332c;margin:0 0 10px}
+  .card .praise.todo{color:#a99c8b;font-style:italic}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 11px}
+  .tag{font-size:11px;font-weight:700;padding:4px 9px;border-radius:999px;background:#e0d6c4;color:#6a5f50;letter-spacing:.2px}
+  .tag.discount{background:var(--grad-green);color:#fff}
+  .tag.quiet{background:#deead4;color:#3f5b30}
+  .tag.busy{background:#f3ddc4;color:#9a531c}
+
+  .actions{display:flex;gap:8px}
+  .btn{flex:1;text-align:center;text-decoration:none;font-weight:700;font-size:13px;padding:11px 8px;border-radius:12px;cursor:pointer;border:0}
+  .btn.primary{background:var(--roast);color:#fff}
+  .btn.green{background:var(--grad-green);color:#fff}
+  .btn.ghost{background:#e5dbca;color:#6d403f;border:1px solid var(--card-line)}
+  .empty{padding:20px 18px 30px;text-align:center;color:var(--offwhite)}
+  .empty .big{font-family:"Roboto Slab";font-size:18px;margin-bottom:6px}
+  .empty .small{font-size:13px;opacity:.75}
+
+  @media(min-width:700px){
+    #sheet{left:50%;right:auto;bottom:auto;top:50%;width:66vw;max-width:760px;max-height:80svh;
+      border-radius:18px;transform:translate(-50%,-46%) scale(.97);opacity:0;
+      transition:transform .24s ease,opacity .24s ease}
+    #sheet.on{transform:translate(-50%,-50%);opacity:1}
+    .brand-title{font-size:18px}
+    .brand-sub{font-size:15px}
+  }
+  /* full-screen toggle */
+  #sheet.full{max-height:100svh;height:100svh;border-radius:0}
+  @media(min-width:700px){
+    #sheet.full{left:0;top:0;width:100vw;max-width:none;transform:none}
+    #sheet.full.on{transform:none}
+    #sheet.full .cards{padding-left:calc((100vw - 760px)/2 + 12px);padding-right:calc((100vw - 760px)/2 + 12px)}
+  }
+
+  /* ---- Footer (Fleet style: 4 even chevron buttons) ---- */
+  footer{
+    background:var(--grad-brown-up);z-index:640;display:flex;gap:6px;
+    padding:8px 8px calc(8px + var(--safe-bottom));
+    border-top:2px solid transparent;border-image:var(--grad-green) 1;
+    box-shadow:0 -2px 14px rgba(0,0,0,.45)
+  }
+  .footbtn{flex:1 1 0;text-align:center;font-family:"Roboto";font-size:12px;font-weight:500;
+    color:var(--offwhite);background:rgba(0,0,0,.22);border:1px solid rgba(114,175,28,.28);
+    border-radius:9px;padding:9px 4px;cursor:pointer;text-decoration:none;display:flex;
+    align-items:center;justify-content:center;gap:5px}
+  .footbtn:hover{background:rgba(0,0,0,.4)}
+  .footbtn::after{content:"\203A";color:var(--lime);font-weight:700}
+  .footbtn .vnum{font-family:"Roboto Slab";font-weight:600}
+
+  /* ---- Overlays ---- */
+  .overlay{position:fixed;inset:0;background:rgba(20,11,3,.72);z-index:900;display:none;
+    align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(2px)}
+  .overlay.open{display:flex}
+  .modal{background:var(--card);color:var(--ink);max-width:520px;width:100%;max-height:82vh;overflow:auto;
+    border-radius:18px;box-shadow:var(--shadow);padding:22px 22px 26px;border-top:4px solid var(--green)}
+  .modal h2{font-size:22px;margin:0 0 4px;color:var(--espresso)}
+  .modal h4{font-family:"Roboto Slab";font-size:15px;margin:15px 0 4px;color:var(--green-deep)}
+  .modal p{font-size:14px;line-height:1.5;margin:6px 0}
+  .modal a{color:var(--roast)}
+  .modal .close{float:right;background:#e4dac9;border:0;width:34px;height:34px;border-radius:50%;
+    font-size:18px;cursor:pointer;color:#5c534e;margin:-4px -4px 0 0}
+  .modal .sign{font-family:"Roboto Slab";margin-top:14px;color:var(--espresso)}
+
+  @media(prefers-reduced-motion:reduce){
+    #sheet{transition:none}.pin.live .ring{animation:none;opacity:.5}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="46" fill="none" stroke="#F2EEF5" stroke-width="3"/>
+          <circle cx="50" cy="50" r="5" fill="#F2EEF5"/>
+          <g fill="#F2EEF5">
+            <path d="M50 50 L50 15 L59 24 Z"/><path d="M50 50 L85 50 L76 59 Z"/>
+            <path d="M50 50 L50 85 L41 76 Z"/><path d="M50 50 L15 50 L24 41 Z"/>
+          </g>
+          <rect x="47" y="70" width="6" height="19" fill="#F2EEF5"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <span class="brand-title">Coffee Compass</span>
+        <span class="brand-sub">Because life is too short for bad coffee</span>
+      </div>
+    </div>
+    <div class="selectwrap">
+      <label for="airport" style="position:absolute;left:-9999px">Choose an airport</label>
+      <select id="airport" aria-label="Choose an airport"></select>
+    </div>
+  </header>
+
+  <div id="map"></div>
+
+  <footer>
+    <button class="footbtn" id="btnVersion"><span class="vnum" id="vnum">v0.3.0</span></button>
+    <button class="footbtn" id="btnAbout">About</button>
+    <button class="footbtn" id="btnPrivacy">Privacy</button>
+    <button class="footbtn" id="btnFeedback">Feedback</button>
+    <a class="footbtn" id="btnShop" href="https://www.dutchmountain.coffee" target="_blank" rel="noopener noreferrer">Dutch Mountain</a>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<section id="sheet" role="dialog" aria-modal="false" aria-labelledby="sheetTitle" aria-hidden="true">
+  <div class="sheet-grab"></div>
+  <div class="sheet-head">
+    <div class="sheet-title">
+      <h2 id="sheetTitle">Airport</h2>
+      <div class="sub" id="sheetSub"></div>
+      <span class="airchip" id="airchip" hidden></span>
+    </div>
+    <button class="icon-btn" id="sheetFull" aria-label="Toggle full screen" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg>
+    </button>
+    <button class="icon-btn" id="sheetClose" aria-label="Close">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="hotelbar hide" id="hotelbar" role="tablist"></div>
+  <div class="hotelheading" id="hotelHeading"></div>
+  <div class="cards" id="cards"></div>
+</section>
+
+<!-- About -->
+<div class="overlay" id="ovAbout" role="dialog" aria-modal="true" aria-labelledby="aboutH">
+  <div class="modal">
+    <button class="close" data-close aria-label="Close">&times;</button>
+    <h2 id="aboutH">About Coffee Compass</h2>
+    <p><em>Your preflight brief.</em></p>
+    <h4>What this is</h4>
+    <p>Coffee Compass is your flight bag for good coffee. Wherever crew are based or laid over, it points you to a short, hand picked list of proper coffee bars within walking distance of the crew hotel, so you spend your rest finding a quiet seat, not scrolling.</p>
+    <h4>How to fly it</h4>
+    <p>Start on the map, or pick your airport from the dropdown up top. Choose your hotel if there is more than one, since that is where you are walking from. Each coffee bar shows the walk time from your hotel, and when it is a longer walk, a bus and a train option too. You also get tags for what it offers, my airplane rating and a line on why it is worth the walk. Tap Directions for its Google profile, or Reviews for the crowd view.</p>
+    <h4>Keep it in your flight bag</h4>
+    <p>Install it to your home screen and it opens like any app, no store required. On iPhone, open this page in Safari, tap the Share button and choose Add to Home Screen. On Android, open it in Chrome, tap the three dot menu and choose Install app or Add to Home screen. Done in seconds, ready before your next duty.</p>
+    <h4>Who rates them</h4>
+    <p>The airplanes are my mark, one to five, as a captain who has actually sat in these places with a coffee in hand. One expert opinion, not an anonymous crowd.</p>
+    <h4>Want the crowd view, or to leave your own?</h4>
+    <p>Every card links straight to the venue's Google reviews. Read the room there, and if you want to leave a comment of your own, that is the place to do it. Coffee Compass keeps no reviews of its own.</p>
+    <h4>Security and privacy, kept simple</h4>
+    <p>The app is a single file served over HTTPS, with a strict content security policy and no third party trackers. No login, no account, and no data collected about you, because there is nothing here to log in to. The full detail is under Privacy in the footer.</p>
+    <h4>Found a gem, or a dud?</h4>
+    <p>Hit Feedback in the footer. It opens a prefilled email to me. Tell me what to add, drop or fix, and I will keep the list sharp.</p>
+    <h4>Sources</h4>
+    <p>Map by <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors. Coffee listings are open information; venue links go to Google.</p>
+    <p class="sign">Blue skies and strong coffee. Serge.</p>
+  </div>
+</div>
+
+<!-- Privacy -->
+<div class="overlay" id="ovPrivacy" role="dialog" aria-modal="true" aria-labelledby="privH">
+  <div class="modal">
+    <button class="close" data-close aria-label="Close">&times;</button>
+    <h2 id="privH">Privacy, the short pre flight briefing</h2>
+    <p>Welcome aboard. Before you taxi off for a coffee, here is exactly what Coffee Compass does and does not do with your data. It is short, because there is not much to tell.</p>
+    <h4>We do not know who you are</h4>
+    <p>No account, no login, no sign up. You are an anonymous passenger and we would like to keep you that way.</p>
+    <h4>We do not track you</h4>
+    <p>No analytics, no advertising pixels, no tracking cookies following you down the jet bridge. Coffee Compass is not air traffic control and has no interest in watching your every move.</p>
+    <h4>Tap through and you leave our cabin</h4>
+    <p>The links to a venue's Google profile and reviews, the transit directions, and the map itself, come from Google and OpenStreetMap. The moment you load the map or follow a link, those third parties receive the ordinary technical details any website visit involves, such as your device and network address, under their own privacy policies and not ours.</p>
+    <h4>Write to us and you have shared your email, only that</h4>
+    <p>The Feedback button opens your own mail app, addressed to serge@dutchmountain.coffee. If you send it, we see your message and your email address, and we use them only to read and reply. Nothing more.</p>
+    <h4>Installing the app changes none of this</h4>
+    <p>Adding Coffee Compass to your home screen keeps everything above exactly the same. Still no account, still nothing collected.</p>
+    <p>That is the whole briefing. No hidden compartments, no fine print in the seat pocket. Enjoy the coffee, and mind the step on the way out.</p>
+    <p>Questions? Serge is at <a href="mailto:serge@dutchmountain.coffee">serge@dutchmountain.coffee</a>.</p>
+  </div>
+</div>
+
+<!-- Version -->
+<div class="overlay" id="ovVersion" role="dialog" aria-modal="true" aria-labelledby="verH">
+  <div class="modal">
+    <button class="close" data-close aria-label="Close">&times;</button>
+    <h2 id="verH">Coffee Compass <span id="verH2"></span></h2>
+    <p><em>Demo build.</em></p>
+    <p>Live now: Düsseldorf (DUS) and Stuttgart (STR), flown for Eurowings, with real hotels and coffee bars. Rotterdam (RTM), flown for Transavia, and Lagos (LOS), Algiers (ALG), Yerevan (EVN), Bucharest (OTP), Vilnius (VNO) and Ho Chi Minh City (SGN) are coming soon, information to follow.</p>
+    <p>Airplane ratings and praise lines are placeholders in this build, waiting for the auditor's verdict.</p>
+  </div>
+</div>
+
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"
+  integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script>
+"use strict";
+var APP_VERSION="v0.3.0";
+var FEEDBACK="serge@dutchmountain.coffee";
+var FEEDBACK_SUBJECT="Coffee Compass Feedback";
+var WALK_LONG=20; /* minutes: above this, offer bus + train */
+
+var AIRLINES={
+  eurowings:{name:"Eurowings", color:"#B4175E", deep:"#8F174F"},
+  transavia:{name:"Transavia", color:"#00A94F", deep:"#00843d"}
+};
+
+/* rating:1..5 airplanes or null (auditor to set). praise:"" to add. tags:[] fixed vocab.
+   walk: est. minutes on foot from THIS hotel. transit: optional [{mode,min}] auditor-set;
+   when absent and walk>WALK_LONG, live Bus + Train buttons are shown. */
+var DATA=[
+  { iata:"DUS", city:"Düsseldorf", name:"Düsseldorf Airport", lat:51.28723, lon:6.762062, eu:true, airline:"eurowings", hotels:[
+    { name:"Lindner Hotel Düsseldorf Airport", short:"Lindner", lat:51.273609, lon:6.779768, venues:[
+      { title:"Kaffeerösterei Lameng", addr:"Unterrather Straße 64, Düsseldorf", lat:51.274894, lon:6.784448, walk:5, rating:null, praise:"", tags:[] },
+      { title:"Zum Kwadrat", addr:"Blücherstraße 51, Düsseldorf", lat:51.238272, lon:6.783614, walk:59, rating:null, praise:"", tags:[] }
+    ]},
+    { name:"Courtyard by Marriott Düsseldorf Seestern", short:"Marriott", lat:51.242362, lon:6.738502, venues:[
+      { title:"Copenhagen Coffee Lab", addr:"Luegallee, Düsseldorf", lat:51.231902, lon:6.747497, walk:20, rating:null, praise:"", tags:[] },
+      { title:"Die Rostmeister", addr:"Quirinstraße 1a, Düsseldorf", lat:51.231802, lon:6.748167, walk:20, rating:null, praise:"", tags:[] },
+      { title:"Dritan Alsela Roastery", addr:"Hansaallee 321, Düsseldorf", lat:51.245292, lon:6.710833, walk:29, rating:null, praise:"", tags:[] }
+    ]}
+  ]},
+  { iata:"STR", city:"Stuttgart", name:"Stuttgart Airport", lat:48.688422, lon:9.205393, eu:true, airline:"eurowings", hotels:[
+    { name:"Mövenpick Hotel Stuttgart Airport & Messe", short:"Mövenpick", lat:48.692145, lon:9.191089, venues:[
+      { title:"Kaffee von Friediger", addr:"Bernhäuser Straße 7, Leinfelden-Echterdingen", lat:48.688766, lon:9.168117, walk:26, rating:null, praise:"", tags:[] }
+    ]}
+  ]},
+  { iata:"RTM", city:"Rotterdam", name:"Rotterdam The Hague", lat:51.9569, lon:4.4375, eu:true, airline:"transavia", hotels:[] },
+  { iata:"ALG", city:"Algiers", name:"Houari Boumediene (Algiers)", lat:36.6910, lon:3.2154, hotels:[] },
+  { iata:"EVN", city:"Yerevan", name:"Zvartnots (Yerevan)", lat:40.1473, lon:44.3959, hotels:[] },
+  { iata:"OTP", city:"Bucharest", name:"Henri Coandă (Bucharest)", lat:44.5711, lon:26.0850, eu:true, hotels:[] },
+  { iata:"VNO", city:"Vilnius", name:"Vilnius Airport", lat:54.6341, lon:25.2858, eu:true, hotels:[] },
+  { iata:"LOS", city:"Lagos", name:"Murtala Muhammed (Lagos)", lat:6.5774, lon:3.3212, hotels:[] },
+  { iata:"SGN", city:"Ho Chi Minh City", name:"Tan Son Nhat (Ho Chi Minh City)", lat:10.8188, lon:106.6519, hotels:[
+    { name:"Crew hotel 1 (to confirm)", short:"Hotel 1", lat:10.8188, lon:106.6519, venues:[] },
+    { name:"Crew hotel 2 (to confirm)", short:"Hotel 2", lat:10.8188, lon:106.6519, venues:[] },
+    { name:"Crew hotel 3 (to confirm)", short:"Hotel 3", lat:10.8188, lon:106.6519, venues:[] }
+  ]}
+];
+
+var TAG_LABEL={"crew-discount":"Crew discount","quiet":"Quiet","busy":"Busy","outdoor-seating":"Outdoor seating",
+  "lunch":"Lunch","excellent-cake":"Excellent cake","fast-wifi":"Fast wifi","power-sockets":"Power sockets",
+  "open-early":"Open early","open-late":"Open late","near-hotel":"Near crew hotel","laptop-friendly":"Laptop friendly",
+  "takeaway":"Takeaway","card-payments":"Card payments"};
+
+function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
+function hasVenues(a){return a.hotels.some(function(h){return h.venues&&h.venues.length;});}
+function gProfile(v){return v.googleProfile || ("https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(v.title+", "+v.addr));}
+function gReviews(v){return v.googleReviews || ("https://www.google.com/search?q="+encodeURIComponent(v.title+" "+v.addr+" google reviews"));}
+function gDir(h,v,mode){return "https://www.google.com/maps/dir/?api=1&origin="+h.lat+","+h.lon+"&destination="+v.lat+","+v.lon+"&travelmode="+mode;}
+function planeSVG(fill){var c=fill?"#DD6F02":"none",s=fill?"#DD6F02":"rgba(255,255,255,.55)";
+  return '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="'+c+'" stroke="'+s+'" stroke-width="1"/></svg>';}
+var CUP='<svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2zm2-2h9a4 4 0 0 0 4-4V5H4v8a4 4 0 0 0 2 3.5V17zm13-9h1.5a1.5 1.5 0 0 1 0 3H19V8z"/></svg>';
+var BED='<svg viewBox="0 0 24 24"><path d="M4 7h11a4 4 0 0 1 4 4v3H2V8a1 1 0 0 1 2 0v-1zm-2 9h20v3h-2v-1H4v1H2v-3zM7 8.5A1.5 1.5 0 1 0 7 11a1.5 1.5 0 0 0 0-2.5z"/></svg>';
+var BUS='<svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2v2h-2v-2H6v2H4v-2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 4v4h7V8H4zm9 0v4h7V8h-7zM6.5 14a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm11 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/></svg>';
+var TRAIN='<svg viewBox="0 0 24 24"><path d="M12 2c-4 0-8 .5-8 4v9a3 3 0 0 0 3 3l-1.5 1.5V21h13v-1.5L17 18a3 3 0 0 0 3-3V6c0-3.5-4-4-8-4zM6 7h5v4H6V7zm7 0h5v4h-5V7zM8.5 13.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm7 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"/></svg>';
+
+/* ---- Map: light Voyager, fit Europe on load ---- */
+var map=L.map("map",{zoomControl:true,attributionControl:true,tap:true});
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+  attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  subdomains:"abc", maxZoom:19
+}).addTo(map);
+var euPts=DATA.filter(function(a){return a.eu;}).map(function(a){return [a.lat,a.lon];});
+map.fitBounds(euPts,{padding:[45,45]});
+
+/* airport markers */
+var markers={};
+DATA.forEach(function(a){
+  var live=hasVenues(a);
+  var html='<div class="pin '+(live?"live":"soon")+'">'+(live?'<span class="ring"></span>':'')+'<span class="dot">'+a.iata+'</span></div>';
+  var m=L.marker([a.lat,a.lon],{icon:L.divIcon({html:html,className:"",iconSize:[30,30],iconAnchor:[15,15]}),title:a.name}).addTo(map);
+  m.on("click",function(){selectAirport(a.iata,true);});
+  markers[a.iata]=m;
+});
+
+/* orientation spots: hotels + coffee bars, shown when zoomed in */
+var spots=L.layerGroup();
+DATA.forEach(function(a){
+  a.hotels.forEach(function(h,hi){
+    var hm=L.marker([h.lat,h.lon],{icon:L.divIcon({html:'<div class="spot hotel"><span class="s">'+BED+'</span></div>',className:"",iconSize:[26,26],iconAnchor:[13,13]}),title:h.name});
+    hm.on("click",function(){selectAirport(a.iata,false);setHotel(a,hi);}); hm.addTo(spots);
+    (h.venues||[]).forEach(function(v){
+      var vm=L.marker([v.lat,v.lon],{icon:L.divIcon({html:'<div class="spot coffee"><span class="s">'+CUP+'</span></div>',className:"",iconSize:[26,26],iconAnchor:[13,13]}),title:v.title});
+      vm.on("click",function(){selectAirport(a.iata,false);setHotel(a,hi);}); vm.addTo(spots);
+    });
+  });
+});
+function refreshSpots(){ if(map.getZoom()>=9){ if(!map.hasLayer(spots)) spots.addTo(map); } else if(map.hasLayer(spots)) map.removeLayer(spots); }
+map.on("zoomend",refreshSpots); refreshSpots();
+
+/* ---- dropdown ---- */
+var sel=document.getElementById("airport");
+var ph=el("option","","--- Choose Base ---");ph.value="";ph.disabled=true;ph.selected=true;sel.appendChild(ph);
+DATA.slice().sort(function(x,y){return x.iata.localeCompare(y.iata);}).forEach(function(a){
+  var n=a.hotels.length;
+  var label=a.iata+"  "+a.city+(n>1?" · "+n+" hotels":(hasVenues(a)?"":" · soon"));
+  var o=el("option","",label);o.value=a.iata;sel.appendChild(o);
+});
+sel.addEventListener("change",function(){if(sel.value)selectAirport(sel.value,true);});
+
+/* ---- sheet ---- */
+var sheet=document.getElementById("sheet"), scrim=document.getElementById("scrim");
+var current=null;
+
+function selectAirport(iata,fly){
+  var a=DATA.find(function(x){return x.iata===iata;});
+  if(!a)return; current=a; sel.value=iata;
+  if(fly) map.flyTo([a.lat,a.lon], hasVenues(a)?14:6, {duration:.6});
+  document.getElementById("sheetTitle").textContent=a.city;
+  document.getElementById("sheetSub").textContent=a.name;
+  /* airline branding */
+  var air=a.airline?AIRLINES[a.airline]:null;
+  sheet.style.setProperty("--air", air?air.color:"var(--roast)");
+  var chip=document.getElementById("airchip");
+  if(air){ chip.hidden=false; chip.textContent=""; chip.insertAdjacentHTML("beforeend",'<svg viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>'); chip.appendChild(document.createTextNode("For "+air.name+" crew")); }
+  else chip.hidden=true;
+  renderHotelBar(a); renderHotel(a,0); openSheet();
+}
+
+function renderHotelBar(a){
+  var bar=document.getElementById("hotelbar"); bar.textContent="";
+  if(a.hotels.length<2){ bar.classList.add("hide"); return; }
+  bar.classList.remove("hide");
+  a.hotels.forEach(function(h,i){
+    var b=el("button","",h.short||h.name);
+    b.setAttribute("role","tab"); b.setAttribute("aria-pressed", i===0?"true":"false");
+    b.addEventListener("click",function(){
+      Array.prototype.forEach.call(bar.children,function(c,ci){c.setAttribute("aria-pressed",ci===i?"true":"false");});
+      renderHotel(a,i);
+    });
+    bar.appendChild(b);
+  });
+}
+
+function renderHotel(a,i){
+  var heading=document.getElementById("hotelHeading"), cards=document.getElementById("cards");
+  cards.textContent=""; heading.textContent="";
+  if(!a.hotels.length){
+    var e=el("div","empty");
+    e.appendChild(el("div","big","Coffee spots coming soon"));
+    e.appendChild(el("div","small","We are scouting good quiet coffee near the "+a.city+" crew hotels. More information to follow."));
+    cards.appendChild(e); return;
+  }
+  var h=a.hotels[i];
+  heading.appendChild(document.createTextNode("Walking from "));
+  heading.appendChild(el("strong","",h.name));
+  if(!h.venues||!h.venues.length){
+    var e2=el("div","empty");
+    e2.appendChild(el("div","big","Coffee spots coming soon"));
+    e2.appendChild(el("div","small","Good quiet coffee near "+h.name+" is being scouted. More information to follow."));
+    cards.appendChild(e2); return;
+  }
+  h.venues.slice().sort(function(x,y){return x.walk-y.walk;}).forEach(function(v){ cards.appendChild(renderCard(v,h)); });
+}
+function setHotel(a,hi){
+  var bar=document.getElementById("hotelbar");
+  Array.prototype.forEach.call(bar.children,function(c,ci){c.setAttribute("aria-pressed",ci===hi?"true":"false");});
+  renderHotel(a,hi);
+}
+
+function renderCard(v,h){
+  var card=el("div","card");
+  var photo=el("div","photo");
+  var ph=el("div","ph"); ph.innerHTML='<svg width="40" height="40" viewBox="0 0 24 24" fill="rgba(255,255,255,.85)"><path d="M4 19h16v2H4v-2zm2-2h9a4 4 0 0 0 4-4V5H4v8a4 4 0 0 0 2 3.5V17zm13-9h1.5a1.5 1.5 0 0 1 0 3H19V8z"/></svg>'; photo.appendChild(ph);
+
+  var meta=el("div","meta");
+  var walk=el("div","chip"+(v.walk>WALK_LONG?" long":""));
+  walk.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M13 5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-2 2l-3 2 1 5-2 6h2l2-5 2 3v5h2v-6l-2-3 1-4 2 2h3V9h-2l-3-3-2 1z"/></svg>';
+  walk.appendChild(el("span","","~"+v.walk+" min walk"));
+  meta.appendChild(walk);
+  if(v.walk>WALK_LONG){
+    var mkT=function(mode,label){ var b=el("a","chip"); b.href=gDir(h,v,"transit"); b.target="_blank"; b.rel="noopener noreferrer"; b.innerHTML=(mode==="train"?TRAIN:BUS); b.appendChild(document.createTextNode(" "+label)); return b; };
+    if(v.transit&&v.transit.length){ v.transit.forEach(function(t){ meta.appendChild(mkT(t.mode,(t.mode==="train"?"Train ":"Bus ")+"~"+t.min+" min")); }); }
+    else { meta.appendChild(mkT("bus","Bus")); meta.appendChild(mkT("train","Train")); }
+  }
+  photo.appendChild(meta);
+
+  var rate=el("div","rate"); var rr=v.rating||0; for(var k=1;k<=5;k++){rate.innerHTML+=planeSVG(k<=rr);}
+  rate.setAttribute("role","img"); rate.setAttribute("aria-label", v.rating?("Serge rates this "+v.rating+" of 5 airplanes"):"Rating pending");
+  photo.appendChild(rate); card.appendChild(photo);
+
+  var body=el("div","body");
+  body.appendChild(el("h3","",v.title));
+  body.appendChild(el("div","addr",v.addr));
+  body.appendChild(v.praise?el("p","praise",v.praise):el("p","praise todo","Auditor's verdict to add."));
+
+  if(v.tags&&v.tags.length){
+    var tw=el("div","tags");
+    v.tags.slice().sort(function(x,y){return (x==="crew-discount"?-1:0)-(y==="crew-discount"?-1:0);}).forEach(function(t){
+      var extra=t==="crew-discount"?" discount":(t==="quiet"?" quiet":(t==="busy"?" busy":""));
+      tw.appendChild(el("span","tag"+extra,TAG_LABEL[t]||t));
+    });
+    body.appendChild(tw);
+  }
+
+  var actions=el("div","actions");
+  var a1=el("a","btn primary","Directions"); a1.href=gProfile(v); a1.target="_blank"; a1.rel="noopener noreferrer";
+  var a2=el("a","btn ghost","Reviews"); a2.href=gReviews(v); a2.target="_blank"; a2.rel="noopener noreferrer";
+  actions.appendChild(a1); actions.appendChild(a2); body.appendChild(actions);
+
+  card.appendChild(body); return card;
+}
+
+function openSheet(){ sheet.classList.remove("full"); document.getElementById("sheetFull").setAttribute("aria-pressed","false");
+  sheet.classList.add("on"); sheet.setAttribute("aria-hidden","false"); scrim.classList.add("on"); }
+function closeSheet(){ sheet.classList.remove("on"); sheet.setAttribute("aria-hidden","true"); scrim.classList.remove("on"); }
+document.getElementById("sheetClose").addEventListener("click",closeSheet);
+scrim.addEventListener("click",closeSheet);
+document.getElementById("sheetFull").addEventListener("click",function(){
+  var on=sheet.classList.toggle("full"); this.setAttribute("aria-pressed",on?"true":"false"); map.invalidateSize();
+});
+
+/* ---- overlays ---- */
+function openOv(id){document.getElementById(id).classList.add("open");}
+document.getElementById("btnAbout").addEventListener("click",function(){openOv("ovAbout");});
+document.getElementById("btnPrivacy").addEventListener("click",function(){openOv("ovPrivacy");});
+document.getElementById("btnVersion").addEventListener("click",function(){openOv("ovVersion");});
+document.getElementById("btnFeedback").addEventListener("click",function(){window.location.href="mailto:"+FEEDBACK+"?subject="+encodeURIComponent(FEEDBACK_SUBJECT);});
+Array.prototype.forEach.call(document.querySelectorAll(".overlay"),function(o){
+  o.addEventListener("click",function(e){if(e.target===o||e.target.hasAttribute("data-close"))o.classList.remove("open");});
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"){ Array.prototype.forEach.call(document.querySelectorAll(".overlay.open"),function(o){o.classList.remove("open");}); if(sheet.classList.contains("on"))closeSheet(); }
+});
+
+/* ---- version + manifest ---- */
+document.getElementById("vnum").textContent=APP_VERSION;
+document.getElementById("verH2").textContent=APP_VERSION;
+(function(){
+  try{
+    var icon="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192"><rect width="192" height="192" rx="40" fill="#2f1600"/><circle cx="96" cy="88" r="52" fill="none" stroke="#F2EEF5" stroke-width="6"/><circle cx="96" cy="88" r="7" fill="#F2EEF5"/><g fill="#72AF1C"><path d="M96 88 L96 44 L106 54 Z"/><path d="M96 88 L140 88 L130 98 Z"/><path d="M96 88 L96 132 L86 122 Z"/><path d="M96 88 L52 88 L62 78 Z"/></g></svg>');
+    var mf={name:"Coffee Compass",short_name:"Coffee Compass",start_url:".",scope:".",display:"standalone",background_color:"#2f1600",theme_color:"#2f1600",description:"Because life is too short for bad coffee.",icons:[{src:icon,sizes:"192x192",type:"image/svg+xml",purpose:"any"},{src:icon,sizes:"512x512",type:"image/svg+xml",purpose:"any"}]};
+    var link=document.createElement("link"); link.rel="manifest"; link.href=URL.createObjectURL(new Blob([JSON.stringify(mf)],{type:"application/manifest+json"})); document.head.appendChild(link);
+    var al=document.createElement("link"); al.rel="apple-touch-icon"; al.href=icon; document.head.appendChild(al);
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
