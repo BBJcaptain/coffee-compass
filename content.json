@@ -8,8 +8,18 @@
   },
   "_allowedTags": [
     "crew-discount",
+    "crew-discount-5",
+    "crew-discount-10",
+    "crew-discount-15",
+    "crew-discount-20",
+    "crew-discount-25",
+    "crew-discount-50",
     "quiet",
     "busy",
+    "lively",
+    "outstanding-hardware",
+    "own-roastery",
+    "chocolat",
     "outdoor-seating",
     "lunch",
     "excellent-cake",
@@ -60,9 +70,9 @@
     },
     "str-fridriger": {
       "name": "Kaffee von Fridriger — STR, Mövenpick hotel",
-      "stars": null,
-      "reviews": null,
-      "praise": "",
+      "stars": 5,
+      "reviews": 72,
+      "praise": "A huge collection of coffee, very knowledgable baristas and home-made chocolat",
       "tags": []
     }
   }
