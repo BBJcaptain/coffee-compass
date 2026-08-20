@@ -1,10 +1,11 @@
 {
-  "_readme": "Coffee Compass content file. Fill in each venue's stars, reviews, praise and tags here, save, then run Publish.command. The live app reads this on every load, so your edits appear without rebuilding the app. Match each venue by its id (do not change the ids).",
+  "_readme": "Coffee Compass content file. Fill in each venue's stars, reviews, praise, tags and google link here, save, then run Publish.command. The live app reads this on every load, so your edits appear without rebuilding the app. Match each venue by its id (do not change the ids).",
   "_howto": {
     "stars": "Your rating as the auditor, 1 to 5. Halves are allowed, for example 4.5. Use null until you have visited.",
     "reviews": "The number of Google reviews for the place, shown in brackets after the stars like Google does, for example 1243. Copy it from the venue's Google listing. Use null to hide the count.",
     "praise": "One honest line in your own voice. Empty string until you have a verdict.",
-    "tags": "Pick any that apply from _allowedTags below. Order does not matter; crew-discount is highlighted automatically."
+    "tags": "Pick any that apply from _allowedTags below. Order does not matter; crew-discount is highlighted automatically.",
+    "google": "The full Google Maps link for the cafe, copied from its Google page (the long https://www.google.com/maps/place/... URL). The Reviews button opens this exact page. A link ending in 1b1 opens straight on the reviews tab. Use null to fall back to a name-and-address search."
   },
   "_allowedTags": [
     "crew-discount",
@@ -38,42 +39,48 @@
       "stars": null,
       "reviews": null,
       "praise": "",
-      "tags": []
+      "tags": [],
+      "google": null
     },
     "dus-kwadrat": {
       "name": "Zum Kwadrat — DUS, Lindner hotel",
       "stars": null,
       "reviews": null,
       "praise": "",
-      "tags": []
+      "tags": [],
+      "google": null
     },
     "dus-copenhagen": {
       "name": "Copenhagen Coffee Lab — DUS, Marriott Seestern hotel",
       "stars": null,
       "reviews": null,
       "praise": "",
-      "tags": []
+      "tags": [],
+      "google": null
     },
     "dus-rostmeister": {
       "name": "Die Rostmeister — DUS, Marriott Seestern hotel",
       "stars": null,
       "reviews": null,
       "praise": "",
-      "tags": []
+      "tags": [],
+      "google": null
     },
     "dus-dritan": {
       "name": "Dritan Alsela Roastery — DUS, Marriott Seestern hotel",
       "stars": null,
       "reviews": null,
       "praise": "",
-      "tags": []
+      "tags": [],
+      "google": null
     },
     "str-fridriger": {
       "name": "Kaffee von Fridriger — STR, Mövenpick hotel",
       "stars": 5,
       "reviews": 72,
       "praise": "A huge collection of coffee from all over the world, very knowledgable and friendly baristas, and home-made chocolat",
-      "tags": ["home-made-chocolat", "Outdoor-seating", "huge-variety-of-coffee", "card-payments"]
+      "tags": ["home-made-chocolat", "Outdoor-seating", "huge-variety-of-coffee", "card-payments"],
+      "google": "https://www.google.com/maps/place/Kaffee+von+Fridriger/@48.6888129,9.168129,17z/data=!3m1!5s0x4799c2ba8b0e3e4d:0x58dbab46c21e7f8!4m8!3m7!1s0x4799c3e3d102ede7:0xb86a2843b93148be!8m2!3d48.6888129!4d9.168129!9m1!1b1!16s%2Fg%2F11vb_g51rs?entry=ttu&g_ep=EgoyMDI2MDgxNy4wIKXMDSoASAFQAw%3D%3D"
     }
   }
 }

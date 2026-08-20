@@ -96,7 +96,13 @@
   .brand-text{display:flex;flex-direction:column;line-height:1.12;min-width:0}
   .brand-title{font-family:"Roboto Slab";font-size:16px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
   .brand-sub{font-size:13px;font-weight:500;color:var(--lime);opacity:.98;letter-spacing:.2px;line-height:1.2}
-  .selectwrap{margin-left:auto;position:relative;flex:0 0 auto}
+  .hdr-refresh{margin-left:auto;width:40px;height:40px;border-radius:50%;flex:0 0 auto;
+    background:rgba(0,0,0,.28);border:1px solid rgba(114,175,28,.4);color:var(--lime);
+    display:grid;place-items:center;cursor:pointer}
+  .hdr-refresh:hover{background:rgba(0,0,0,.45)}
+  .hdr-refresh svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .hdr-refresh.spin svg{animation:ccspin .7s linear}
+  .selectwrap{position:relative;flex:0 0 auto}
   select#airport{
     appearance:none;-webkit-appearance:none;
     font-family:"Roboto";font-size:13.5px;font-weight:500;
@@ -187,9 +193,9 @@
   .hotelbar button[aria-pressed="true"]{background:var(--grad-green);border-color:transparent;color:#fff}
   .hotelheading{padding:9px 16px 2px;font-size:11.5px;letter-spacing:.4px;text-transform:uppercase;color:var(--lime);opacity:.9}
   .hotelheading strong{color:#fff;text-transform:none;font-size:13px;letter-spacing:0;opacity:1}
-  .cards{flex:1 1 auto;min-height:0;overflow-y:auto;padding:6px 12px calc(16px + var(--safe-bottom));display:grid;gap:12px}
+  .cards{flex:1 1 auto;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 12px calc(16px + var(--safe-bottom));display:flex;flex-direction:column;gap:12px}
 
-  .card{background:var(--card);color:var(--ink);border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.28)}
+  .card{flex:0 0 auto;background:var(--card);color:var(--ink);border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,.28)}
   .card .photo{height:200px;background:var(--grad-brown-up);position:relative;display:flex;align-items:flex-end;justify-content:space-between}
   .card .photo .ph{position:absolute;inset:0;display:grid;place-items:center;opacity:.45}
   .card .photo img.photoimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -198,6 +204,7 @@
   .card .chip{padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.62);color:#fff;font-size:12px;font-weight:600;
     display:inline-flex;align-items:center;gap:5px;text-decoration:none;white-space:nowrap}
   .card .chip.long{background:linear-gradient(135deg,#8B4D22,#5c3413)}
+  .card .chip.walk{background:rgba(74,132,26,.7);text-shadow:0 1px 2px rgba(0,0,0,.35)}
   .card .chip svg{width:13px;height:13px;fill:#fff}
   .card .body{padding:11px 14px 14px}
   .card .titlerow{display:flex;align-items:center;gap:8px;margin:0 0 1px}
@@ -288,6 +295,9 @@
         <span class="brand-sub">Because life is too short for bad coffee</span>
       </div>
     </div>
+    <button id="hdrRefresh" class="hdr-refresh" type="button" title="Refresh listings" aria-label="Refresh listings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></svg>
+    </button>
     <div class="selectwrap">
       <label for="airport" style="position:absolute;left:-9999px">Choose an airport</label>
       <select id="airport" aria-label="Choose an airport"></select>
@@ -297,7 +307,7 @@
   <div id="map"></div>
 
   <footer>
-    <button class="footbtn" id="btnVersion"><span class="vnum" id="vnum">v0.4.6</span></button>
+    <button class="footbtn" id="btnVersion"><span class="vnum" id="vnum">v0.4.9</span></button>
     <button class="footbtn" id="btnAbout">About</button>
     <button class="footbtn" id="btnPrivacy">Privacy</button>
     <button class="footbtn" id="btnFeedback">Feedback</button>
@@ -391,7 +401,7 @@
   crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script>
 "use strict";
-var APP_VERSION="v0.4.6";
+var APP_VERSION="v0.4.9";
 var FEEDBACK="serge@dutchmountain.coffee";
 var FEEDBACK_SUBJECT="Coffee Compass Feedback";
 var WALK_LONG=20; /* minutes: above this, offer bus + train */
@@ -427,6 +437,10 @@ var DATA=[
   { iata:"EVN", city:"Yerevan", name:"Zvartnots (Yerevan)", lat:40.1473, lon:44.3959, hotels:[] },
   { iata:"OTP", city:"Bucharest", name:"Henri Coandă (Bucharest)", lat:44.5711, lon:26.0850, eu:true, hotels:[] },
   { iata:"VNO", city:"Vilnius", name:"Vilnius Airport", lat:54.6341, lon:25.2858, eu:true, hotels:[] },
+  { iata:"BRU", city:"Brussels", name:"Brussels Airport", lat:50.9014, lon:4.4844, eu:true, hotels:[] },
+  { iata:"OVD", city:"Asturias", name:"Asturias Airport (Oviedo)", lat:43.5636, lon:-6.0346, eu:true, hotels:[] },
+  { iata:"AYT", city:"Antalya", name:"Antalya Airport", lat:36.8987, lon:30.8005, hotels:[] },
+  { iata:"TUN", city:"Tunis", name:"Tunis Carthage", lat:36.8510, lon:10.2272, hotels:[] },
   { iata:"LOS", city:"Lagos", name:"Murtala Muhammed (Lagos)", lat:6.5774, lon:3.3212, hotels:[] },
   { iata:"SGN", city:"Ho Chi Minh City", name:"Tan Son Nhat (Ho Chi Minh City)", lat:10.8188, lon:106.6519, hotels:[
     { name:"Crew hotel 1 (to confirm)", short:"Hotel 1", lat:10.8188, lon:106.6519, venues:[] },
@@ -443,7 +457,7 @@ var TAG_LABEL={"crew-discount":"Crew discount","quiet":"Quiet","busy":"Busy","ou
 function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;}
 function hasVenues(a){return a.hotels.some(function(h){return h.venues&&h.venues.length;});}
 function gProfile(v){return v.googleProfile || ("https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(v.title+", "+v.addr));}
-function gReviews(v){return v.googleReviews || ("https://www.google.com/search?q="+encodeURIComponent(v.title+" "+v.addr+" google reviews"));}
+function gReviews(v){return v.googleReviews || ("https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(v.title+", "+v.addr));}
 function gDir(h,v,mode){return "https://www.google.com/maps/dir/?api=1&origin="+h.lat+","+h.lon+"&destination="+v.lat+","+v.lon+"&travelmode="+mode;}
 function planeSVG(fill){var c=fill?"#DD6F02":"none",s=fill?"#DD6F02":"rgba(255,255,255,.55)";
   return '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="'+c+'" stroke="'+s+'" stroke-width="1"/></svg>';}
@@ -488,19 +502,12 @@ DATA.forEach(function(a){
 function refreshSpots(){ if(map.getZoom()>=9){ if(!map.hasLayer(spots)) spots.addTo(map); } else if(map.hasLayer(spots)) map.removeLayer(spots); }
 map.on("zoomend",refreshSpots); refreshSpots();
 
-/* refresh control: re-fetch the content file and re-render, without a full reload */
+/* refresh: re-fetch the content file and re-render, without a full reload (button lives in the header) */
 function refreshContent(){
   fetch("content.json?ts="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null;})
     .then(function(c){ if(c){ applyContent(c); if(current) selectAirport(current.iata,false); } }).catch(function(){});
 }
-var RefreshBtn=L.Control.extend({options:{position:"topleft"},onAdd:function(){
-  var c=L.DomUtil.create("div","leaflet-bar refresh-ctrl");
-  var a=L.DomUtil.create("a","",c); a.href="#"; a.title="Refresh listings"; a.setAttribute("role","button"); a.setAttribute("aria-label","Refresh listings");
-  a.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v4h-4"/></svg>';
-  L.DomEvent.on(a,"click",function(e){L.DomEvent.stop(e); a.classList.add("spin"); refreshContent(); setTimeout(function(){a.classList.remove("spin");},700);});
-  return c;
-}});
-map.addControl(new RefreshBtn());
+(function(){ var b=document.getElementById("hdrRefresh"); if(b) b.addEventListener("click",function(){ b.classList.add("spin"); refreshContent(); setTimeout(function(){b.classList.remove("spin");},700); }); })();
 
 /* locate control: centre the map on the user's current position */
 var youMarker=null;
@@ -598,7 +605,7 @@ function renderCard(v,h){
   var pim=el("img","photoimg"); pim.src=v.image||DEFAULT_IMG; pim.alt=v.title; pim.loading="lazy"; photo.appendChild(pim);
 
   var meta=el("div","meta");
-  var walk=el("div","chip"+(v.walk>WALK_LONG?" long":""));
+  var walk=el("a","chip walk"); walk.href=gDir(h,v,"walking"); walk.rel="noopener"; walk.title="Walking directions from the hotel";
   walk.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M13 5a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm-2 2l-3 2 1 5-2 6h2l2-5 2 3v5h2v-6l-2-3 1-4 2 2h3V9h-2l-3-3-2 1z"/></svg>';
   walk.appendChild(el("span","","~"+v.walk+" min walk"));
   meta.appendChild(walk);
@@ -676,6 +683,7 @@ function applyContent(c){
     if(d.reviews!=null) v.reviews=d.reviews;
     if(typeof d.praise==="string") v.praise=d.praise;
     if(Array.isArray(d.tags)) v.tags=d.tags;
+    if(d.google) v.googleReviews=d.google;
   }); }); });
 }
 fetch("content.json",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;})
