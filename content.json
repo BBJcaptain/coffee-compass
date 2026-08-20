@@ -1,24 +1,15 @@
 {
-  "_readme": "Coffee Compass content file. Fill in each venue's stars, praise and tags here, save, then run Publish.command. The live app reads this on every load, so your edits appear without rebuilding the app. Match each venue by its id (do not change the ids).",
+  "_readme": "Coffee Compass content file. Fill in each venue's stars, reviews, praise and tags here, save, then run Publish.command. The live app reads this on every load, so your edits appear without rebuilding the app. Match each venue by its id (do not change the ids).",
   "_howto": {
-    "stars": "A whole number 1 to 5, your rating as the auditor. Use null until you have visited.",
+    "stars": "Your rating as the auditor, 1 to 5. Halves are allowed, for example 4.5. Use null until you have visited.",
+    "reviews": "The number of Google reviews for the place, shown in brackets after the stars like Google does, for example 1243. Copy it from the venue's Google listing. Use null to hide the count.",
     "praise": "One honest line in your own voice. Empty string until you have a verdict.",
     "tags": "Pick any that apply from _allowedTags below. Order does not matter; crew-discount is highlighted automatically."
   },
   "_allowedTags": [
-    "crew-discount-5",
-    "crew-discount-10",
-    "crew-discount-15",
-    "crew-discount-20",
-    "crew-discount-25",
-    "crew-discount-50",
-    "friendly-baristas",
-    "top-notch-hardware",
-    "captain-favorite",
-    "great-atmosphere",
+    "crew-discount",
     "quiet",
     "busy",
-    "lively",
     "outdoor-seating",
     "lunch",
     "excellent-cake",
@@ -35,36 +26,42 @@
     "dus-lameng": {
       "name": "Kaffeerösterei Lameng — DUS, Lindner hotel",
       "stars": null,
+      "reviews": null,
       "praise": "",
       "tags": []
     },
     "dus-kwadrat": {
       "name": "Zum Kwadrat — DUS, Lindner hotel",
       "stars": null,
+      "reviews": null,
       "praise": "",
       "tags": []
     },
     "dus-copenhagen": {
       "name": "Copenhagen Coffee Lab — DUS, Marriott Seestern hotel",
       "stars": null,
+      "reviews": null,
       "praise": "",
       "tags": []
     },
     "dus-rostmeister": {
       "name": "Die Rostmeister — DUS, Marriott Seestern hotel",
       "stars": null,
+      "reviews": null,
       "praise": "",
       "tags": []
     },
     "dus-dritan": {
       "name": "Dritan Alsela Roastery — DUS, Marriott Seestern hotel",
       "stars": null,
+      "reviews": null,
       "praise": "",
       "tags": []
     },
     "str-fridriger": {
       "name": "Kaffee von Fridriger — STR, Mövenpick hotel",
       "stars": null,
+      "reviews": null,
       "praise": "",
       "tags": []
     }
